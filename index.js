@@ -1,51 +1,54 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const { v4: uuidv4 } = require('uuid');
-
+const https = require('https');
 const app = express();
 const port = 8083;
-const apiKey = 'yoshiro';  // Reemplaza con tu clave de API real
 
-// Middleware
-app.use(bodyParser.json());
+let playbackURL = '';  // Variable para almacenar la URL de reproducción
 
-// Enlaces almacenados en memoria
-let links = [];
+// Función para actualizar el enlace de reproducción
+function updatePlaybackURL() {
+    const streamUrl = 'https://streamtp.live/global1.php?stream=espn1';
 
-// Endpoint para obtener un enlace autorizado
-app.get('/link', (req, res) => {
-    const { link, api } = req.query;
+    https.get(streamUrl, (res) => {
+        let data = '';
 
-    if (api !== apiKey) {
-        return res.status(403).json({ error: 'Unauthorized' });
+        res.on('data', (chunk) => {
+            data += chunk;
+        });
+
+        res.on('end', () => {
+            const regex = /var playbackURL = "(.*?)";/;
+            const match = data.match(regex);
+
+            if (match && match[1]) {
+                playbackURL = match[1];
+                console.log(`Enlace actualizado: ${playbackURL}`);
+            } else {
+                console.log('No se encontró la URL de reproducción en la página.');
+            }
+        });
+
+    }).on('error', (err) => {
+        console.log('Error en la solicitud: ' + err.message);
+    });
+}
+
+// Llamar la función por primera vez
+updatePlaybackURL();
+
+// Configurar el intervalo para actualizar el enlace cada 2 minutos (120000 ms)
+setInterval(updatePlaybackURL, 120000);
+
+// Ruta para obtener la URL de reproducción actualizada
+app.get('/api/getPlaybackURL', (req, res) => {
+    if (playbackURL) {
+        res.json({ playbackURL: playbackURL });
+    } else {
+        res.status(404).json({ error: 'URL de reproducción no disponible.' });
     }
-
-    if (!link) {
-        return res.status(400).json({ error: 'Link parameter is required' });
-    }
-
-    const newLink = { id: uuidv4(), url: `https://cdn-webapi.vercel.app/cdn/La-cancha/${link}.html` };
-    links.push(newLink);
-
-    res.status(201).json(newLink);
-});
-
-// Endpoint para usar y eliminar un enlace
-app.get('/use-link/:id', (req, res) => {
-    const { id } = req.params;
-
-    const linkIndex = links.findIndex(l => l.id === id);
-    if (linkIndex === -1) {
-        return res.status(404).json({ error: 'Link not found' });
-    }
-
-    const link = links[linkIndex];
-    links.splice(linkIndex, 1);
-
-    res.redirect(link.url);
 });
 
 // Iniciar el servidor
 app.listen(port, () => {
-    console.log(`API running at http://localhost:${port}`);
+    console.log(`Servidor escuchando en http://localhost:${port}`);
 });
