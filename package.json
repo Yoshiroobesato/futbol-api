@@ -14,3 +14,6 @@
     "winston": "^3.14.2"
   }
 }
+"scripts": {
+  "start": "node index.js"
+}
