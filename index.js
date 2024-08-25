@@ -55,7 +55,7 @@ const swaggerOptions = {
       description: 'API for extracting video information',
     },
   },
-  apis: ['./server.js'],
+  apis: ['./index.js'],
 };
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
